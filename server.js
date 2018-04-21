@@ -44,25 +44,26 @@ server.post('/transform-csv', (req, res) => {
         console.log('PART ERROR', error)
         process.exit(1)
       })
-      part
-        .pipe(process.stdout)
+      // part
+      //   .pipe(process.stdout)
 
       part
-        .pipe(csvParser)
-        .on('error', function(error){
-          console.log('PIPE ERROR 1', error)
-          process.exit(1)
-        })
+        .pipe(require('debug-stream')('csv-upload')())
+        // .pipe(csvParser)
+        // .on('error', function(error){
+        //   console.log('PIPE ERROR 1', error)
+        //   process.exit(1)
+        // })
         // .pipe(csvTransformer)
         // .on('error', function(error){
         //   console.log('PIPE ERROR 2', error)
         //   process.exit(1)
         // })
-        .pipe(csvStringifier)
-        .on('error', function(error){
-          console.log('PIPE ERROR 3', error)
-          process.exit(1)
-        })
+        // .pipe(csvStringifier)
+        // .on('error', function(error){
+        //   console.log('PIPE ERROR 3', error)
+        //   process.exit(1)
+        // })
         .pipe(res)
         .on('error', function(error){
           console.log('PIPE ERROR 4', error)
@@ -78,6 +79,15 @@ server.post('/transform-csv', (req, res) => {
       part.resume()
     }
   })
+
+  // form.on('file', function(name,file) {
+  //     //stream it to localhost:4000 with same name
+  //     res.attachment(name)
+  //     fs.createReadStream(file.path)
+  //       .pipe(res)
+
+  //     console.log(file.path);
+  // });
 
   form.on("error", function(error){
     console.log('ERROR', error)
