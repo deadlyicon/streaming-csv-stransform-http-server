@@ -1,5 +1,7 @@
+const path = require('path')
 const express = require('express')
-const multiparty = require("multiparty")
+// const multiparty = require("multiparty")
+const formData = require('express-form-data')
 const csv = require('csv')
 const csvTransform = require('stream-transform')
 
@@ -20,7 +22,7 @@ server.get('/', (req, res) => {
   `)
 })
 
-const csvTransformer = csvTransform((row, callback) => {
+const transformCsvRow = (row, callback) => {
   // console.log('csvTransformer', row)
   process.stdout.write('.')
 
@@ -28,57 +30,77 @@ const csvTransformer = csvTransform((row, callback) => {
     const newRow = row.map(column => column.toUpperCase())
     callback(null, newRow)
   })
-})
+}
+
+
+server.use('/transform-csv', formData.parse({
+  autoFiles: true,
+  uploadDir: path.resolve(__dirname, 'tmp')
+}))
+server.use('/transform-csv', formData.format())
+server.use('/transform-csv', formData.stream())
+// server.use('/transform-csv', formData.union());
 
 server.post('/transform-csv', (req, res) => {
   console.log('REQUEST START')
-
-  const form = new multiparty.Form()
   const csvParser = csv.parse()
   const csvStringifier = csv.stringify()
+  const csvTransformer = csvTransform(transformCsvRow)
 
-  form.on('part', part => {
-    if (part.filename) {
-      res.attachment(part.filename)
-      part.on("error", function(error){
-        console.log('PART ERROR', error)
-        process.exit(1)
-      })
-      // part
-      //   .pipe(process.stdout)
+  const file = req.files.thecsvfile
+  console.log(file)
+  res.attachment(file.filename || file.name)
+  file
+    .pipe(csvParser)
+    .pipe(csvTransformer)
+    .pipe(csvStringifier)
+    .pipe(res)
 
-      part
-        .pipe(require('debug-stream')('csv-upload')())
-        // .pipe(csvParser)
-        // .on('error', function(error){
-        //   console.log('PIPE ERROR 1', error)
-        //   process.exit(1)
-        // })
-        // .pipe(csvTransformer)
-        // .on('error', function(error){
-        //   console.log('PIPE ERROR 2', error)
-        //   process.exit(1)
-        // })
-        // .pipe(csvStringifier)
-        // .on('error', function(error){
-        //   console.log('PIPE ERROR 3', error)
-        //   process.exit(1)
-        // })
-        .pipe(res)
-        .on('error', function(error){
-          console.log('PIPE ERROR 4', error)
-          process.exit(1)
-        })
-        .on('finish', function(error){
-          console.log('\nPIPE finish')
-        })
-        .on('end', function(error){
-          console.log('\nPIPE end')
-        })
-    }else{
-      part.resume()
-    }
-  })
+  // const form = new multiparty.Form()
+
+  // form.on('part', part => {
+  //   if (part.filename) {
+  //     res.attachment(part.filename)
+  //     part.on("error", function(error){
+  //       console.log('PART ERROR', error)
+  //       process.exit(1)
+  //     })
+  //     // part
+  //     //   .pipe(process.stdout)
+
+  //     part
+  //       .pipe(require('debug-stream')('csv-upload')())
+  //       // .pipe(csvParser)
+  //       // .on('error', function(error){
+  //       //   console.log('PIPE ERROR 1', error)
+  //       //   process.exit(1)
+  //       // })
+  //       // .pipe(csvTransformer)
+  //       // .on('error', function(error){
+  //       //   console.log('PIPE ERROR 2', error)
+  //       //   process.exit(1)
+  //       // })
+  //       // .pipe(csvStringifier)
+  //       // .on('error', function(error){
+  //       //   console.log('PIPE ERROR 3', error)
+  //       //   process.exit(1)
+  //       // })
+  //       .pipe(res)
+  //       .on('error', function(error){
+  //         console.log('PIPE ERROR 4', error)
+  //         process.exit(1)
+  //       })
+  //       .on('finish', function(error){
+  //         console.log('\nPIPE finish')
+  //       })
+  //       .on('end', function(error){
+  //         console.log('\nPIPE end')
+  //       })
+  //   }else{
+  //     part.resume()
+  //   }
+  //
+  // })
 
   // form.on('file', function(name,file) {
   //     //stream it to localhost:4000 with same name
@@ -89,12 +111,12 @@ server.post('/transform-csv', (req, res) => {
   //     console.log(file.path);
   // });
 
-  form.on("error", function(error){
-    console.log('ERROR', error)
-    process.exit(1)
-  })
+  // form.on("error", function(error){
+  //   console.log('ERROR', error)
+  //   process.exit(1)
+  // })
 
-  form.parse(req)
+  // form.parse(req)
 })
 
 // server.listen(process.env.PORT)
